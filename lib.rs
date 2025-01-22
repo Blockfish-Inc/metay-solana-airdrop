@@ -14,6 +14,7 @@ use solana_program::{
     system_program,
     sysvar::{rent::Rent, Sysvar}, // Import Rent and Sysvar
 };
+
 use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account, ID,
 };
@@ -22,6 +23,10 @@ use spl_token_2022::{
     amount_to_ui_amount, instruction::initialize_account2, instruction::transfer_checked,
     ID as TOKEN_2022_PROGRAM_ID,
 };
+use std::str::FromStr;
+
+// A base58-encoded Pubkey string
+const KNOWN_PUBKEY_STR: &str = "4Eej8VTCvaR1veafc2UfduTqdcjB52DB6YCBazyUkagD";
 
 // State data structure to store necessary state information
 #[derive(BorshSerialize, BorshDeserialize, Debug)]
@@ -208,7 +213,7 @@ fn initialize_claim(
         msg!("Unauthorized: Only the admin can add claim records.");
         return Err(ProgramError::Custom(0)); // Custom error for unauthorized access
     }
-
+    state_data[32..32 + instruction_data.len()].fill(0);
     state_data[32..32 + instruction_data.len()].copy_from_slice(&instruction_data);
 
     msg!("Claim record added");
@@ -232,6 +237,16 @@ fn claim_airdrop(
     let program_token_account = next_account_info(accounts_iter)?;
     let program_pda_account = next_account_info(accounts_iter)?;
     let program_token2022_account = next_account_info(accounts_iter)?;
+    let payer_account = next_account_info(accounts_iter)?;
+    if !payer_account.is_signer {
+        msg!("Payer must be a signer");
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+
+    if payer_account.key != &user_pubkey {
+        msg!("Unauthorized: can not claim airdrops belonging to others");
+        return Err(ProgramError::Custom(1)); // Custom error for unauthorized access
+    }
 
     // Verify the state account PDA
     let (expected_state_pda, _bump_seed) = Pubkey::find_program_address(&[b"state"], program_id);
