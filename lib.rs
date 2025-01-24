@@ -213,7 +213,7 @@ fn initialize_claim(
         msg!("Unauthorized: Only the admin can add claim records.");
         return Err(ProgramError::Custom(0)); // Custom error for unauthorized access
     }
-    state_data[32..32 + instruction_data.len()].fill(0);
+    state_data[32..].fill(0);
     state_data[32..32 + instruction_data.len()].copy_from_slice(&instruction_data);
 
     msg!("Claim record added");
